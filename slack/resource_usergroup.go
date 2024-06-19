@@ -109,9 +109,19 @@ func resourceSlackUserGroupRead(ctx context.Context, d *schema.ResourceData, m i
 	client := m.(*slack.Client)
 	id := d.Id()
 	var diags diag.Diagnostics
-	userGroups, err := client.GetUserGroupsContext(ctx, slack.GetUserGroupsOptionIncludeUsers(true))
+
+	operation := func() (interface{}, error) {
+		return client.GetUserGroupsContext(ctx, slack.GetUserGroupsOptionIncludeUsers(true))
+	}
+	result, err := retryOnRateLimit(operation)
+
 	if err != nil {
 		return diag.FromErr(fmt.Errorf("couldn't get usergroups: %w", err))
+	}
+
+	userGroups, ok := result.([]slack.UserGroup)
+	if !ok {
+		return diag.FromErr(fmt.Errorf("unexpected result type: %T", result))
 	}
 
 	for _, userGroup := range userGroups {
@@ -129,9 +139,19 @@ func resourceSlackUserGroupRead(ctx context.Context, d *schema.ResourceData, m i
 
 func findUserGroupByName(ctx context.Context, name string, includeDisabled bool, m interface{}) (slack.UserGroup, error) {
 	client := m.(*slack.Client)
-	userGroups, err := client.GetUserGroupsContext(ctx, slack.GetUserGroupsOptionIncludeDisabled(includeDisabled), slack.GetUserGroupsOptionIncludeUsers(true))
+	
+	operation := func() (interface{}, error) {
+		return client.GetUserGroupsContext(ctx, slack.GetUserGroupsOptionIncludeDisabled(includeDisabled), slack.GetUserGroupsOptionIncludeUsers(true))
+	}
+	result, err := retryOnRateLimit(operation)
+
 	if err != nil {
 		return slack.UserGroup{}, err
+	}
+
+	userGroups, ok := result.([]slack.UserGroup)
+	if !ok {
+		return slack.UserGroup{}, fmt.Errorf("unexpected result type: %T", result)
 	}
 
 	for _, userGroup := range userGroups {
@@ -145,9 +165,18 @@ func findUserGroupByName(ctx context.Context, name string, includeDisabled bool,
 
 func findUserGroupByID(ctx context.Context, id string, includeDisabled bool, m interface{}) (slack.UserGroup, error) {
 	client := m.(*slack.Client)
-	userGroups, err := client.GetUserGroupsContext(ctx, slack.GetUserGroupsOptionIncludeDisabled(includeDisabled), slack.GetUserGroupsOptionIncludeUsers(true))
+	operation := func() (interface{}, error) {
+		return client.GetUserGroupsContext(ctx, slack.GetUserGroupsOptionIncludeDisabled(includeDisabled), slack.GetUserGroupsOptionIncludeUsers(true))
+	}
+	result, err := retryOnRateLimit(operation)
+	
 	if err != nil {
 		return slack.UserGroup{}, err
+	}
+
+	userGroups, ok := result.([]slack.UserGroup)
+	if !ok {
+		return slack.UserGroup{}, fmt.Errorf("unexpected result type: %T", result)
 	}
 
 	for _, userGroup := range userGroups {
